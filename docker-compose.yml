@@ -1,0 +1,50 @@
+
+
+services:
+  nginx:
+    container_name: nginx
+    build: ./nginx
+    command: nginx -g "daemon off;"
+    depends_on:
+      - php
+    ports: 
+      - "8080:8080"
+      - "8081:80" 
+    restart: always
+    volumes:
+      - ./:/yii-application
+    networks:
+      - app-network
+  php:
+    container_name: php
+    build: ./php
+    volumes:
+      - ./:/yii-application
+    working_dir: /yii-application
+    restart: always
+    depends_on:
+      - database
+    networks:
+      - app-network 
+  database:
+    container_name: postgres
+    image: postgres:17.0-alpine3.20
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=yii2advanced
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=yii2advanced
+    volumes:
+      - vietnamlab_db:/var/lib/postgresql/data
+      - ./data:/data
+    networks:
+      - app-network
+volumes:
+  vietnamlab_db:
+networks:
+  app-network:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
