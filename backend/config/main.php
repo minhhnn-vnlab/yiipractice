@@ -15,6 +15,9 @@ return [
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-backend',
+            'parsers' => [
+                'application/json' => 'yii\web\JsonParser',
+            ]
         ],
         'user' => [
             'identityClass' => 'common\models\User',
@@ -37,14 +40,23 @@ return [
         'errorHandler' => [
             'errorAction' => 'site/error',
         ],
-        /*
         'urlManager' => [
             'enablePrettyUrl' => true,
+            'enableStrictParsing' => true,
             'showScriptName' => false,
             'rules' => [
+                [
+                    'class' => 'yii\rest\UrlRule', 
+                    'controller' => ['users', 'login-history'], 
+                    'prefix' => 'api'
+                ],
+                'POST api/auth/login' => 'auth/login', 
+                'POST api/auth/register' => 'auth/register',
+                'POST api/auth/verify' => 'auth/verify', 
+                'GET api/user/two-factor-qr' => 'user/two-factor-qr',
+                'PUT api/user/update-two-fa' => 'user/update-two-fa',
             ],
         ],
-        */
     ],
     'params' => $params,
 ];

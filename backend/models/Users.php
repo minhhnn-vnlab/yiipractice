@@ -1,9 +1,9 @@
 <?php
 
-namespace common\models;
+namespace backend\models;
 
 use Yii;
-
+use common\models\LoginHistory;
 /**
  * This is the model class for table "users".
  *

@@ -44,7 +44,7 @@ return [
         ],
         'httpClient' => [
             'class' => yii\httpclient\Client::class,
-            'baseUrl' => 'http://nginx:8080'
+            'baseUrl' => 'http://nginx:8080/api'
         ],
     ],
     'params' => $params,
