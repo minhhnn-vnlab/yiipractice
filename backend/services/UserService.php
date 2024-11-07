@@ -62,4 +62,10 @@ class UserService
         $user = User::find()->where(['email' => $email])->one();
         return $user;
     }
+    public function getTwoFaEnabledById($id) {
+        return User::find()
+            ->select('two_fa_enabled')
+            ->where(['id' => $id])
+            ->scalar();
+    }
 }
