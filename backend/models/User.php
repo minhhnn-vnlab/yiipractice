@@ -4,6 +4,9 @@ namespace backend\models;
 
 use Yii;
 use common\models\LoginHistory;
+use backend\models\Twofaverification;
+use yii\web\IdentityInterface;
+
 /**
  * This is the model class for table "users".
  *
@@ -18,9 +21,9 @@ use common\models\LoginHistory;
  * @property string|null $updated_at
  *
  * @property LoginHistory[] $loginHistories
- * @property TwoFaTokens[] $twoFaTokens
+ * @property Twofaverification[] $twofaverifications
  */
-class Users extends \yii\db\ActiveRecord
+class User extends \yii\db\ActiveRecord implements IdentityInterface
 {
     /**
      * {@inheritdoc}
@@ -36,6 +39,7 @@ class Users extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
+            [['id'], 'integer'],
             [['two_fa_enabled'], 'boolean'],
             [['two_fa_method'], 'string'],
             [['created_at', 'updated_at'], 'safe'],
@@ -64,7 +68,18 @@ class Users extends \yii\db\ActiveRecord
         ];
     }
 
+
     /**
+     * Gets query for [[Twofaverifications]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getTwofaverifications()
+    {
+        return $this->hasMany(Twofaverification::class, ['user_id' => 'id']);
+    }
+
+       /**
      * Gets query for [[LoginHistories]].
      *
      * @return \yii\db\ActiveQuery
@@ -81,6 +96,55 @@ class Users extends \yii\db\ActiveRecord
      */
     public function getTwoFaTokens()
     {
-        return $this->hasMany(TwoFaTokens::class, ['user_id' => 'id']);
+        return $this->hasMany(Twofaverification::class, ['user_id' => 'id']);
+    }
+
+
+       /**
+     * Finds an identity by the given ID.
+     *
+     * @param string|int $id the ID to be looked for
+     * @return IdentityInterface|null the identity object that matches the given ID.
+     */
+    public static function findIdentity($id)
+    {
+        return User::find()->where(['id'=> $id])->one();
+    }
+
+    /**
+     * Finds an identity by the given token.
+     *
+     * @param mixed $token the token to be looked for
+     * @param mixed $type the type of the token
+     * @return IdentityInterface|null the identity object that matches the given token.
+     */
+    public static function findIdentityByAccessToken($token, $type = null)
+    {
+        return static::findOne(['access_token' => $token]);
+    }
+
+    /**
+     * @return int|string current user ID
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * @return string current user auth key
+     */
+    public function getAuthKey()
+    {
+        return $this->two_fa_secret;
+    }
+
+    /**
+     * @param string $authKey
+     * @return bool if auth key is valid for current user
+     */
+    public function validateAuthKey($authKey)
+    {
+        return $this->getAuthKey() === $authKey;
     }
 }

@@ -2,18 +2,28 @@
 namespace backend\services;
 
 use backend\models\User;
-use common\models\Update2FAForm;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Color\Color;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\SvgWriter;
+use common\models\Setup2FAForm;
 use Yii;
 
 class UserService
 {
-    public function updateTwoFa(Update2FAForm $model)
+    public function getByEmail($email) {
+        $user = User::find()->where(['email' => $email])->one();
+        return $user;
+    }
+    public function getTwoFaEnabledById($id) {
+        return User::find()
+            ->select('two_fa_enabled')
+            ->where(['id' => $id])
+            ->scalar();
+    }
+    public function updateTwoFa(Setup2FAForm $model)
     {
         $user = User::findOne($model->user_id);
         if (!$user) {
@@ -37,7 +47,6 @@ class UserService
 
         return ['message' => 'Successfully updated user\'s 2FA method', 'data' => $user];
     }
-
     public function generateTwoFactorQr(User $user)
     {
         $writer = new SvgWriter();
@@ -55,17 +64,10 @@ class UserService
             backgroundColor: new Color(255, 255, 255)
         );
 
-        return $writer->write($qrCode)->getString();
+        $svgString = $writer->write($qrCode)->getString();
+        $base64Image = 'data:image/svg+xml;base64,' . base64_encode($svgString);
+
+        return $base64Image;
     }
 
-    public function getByEmail($email) {
-        $user = User::find()->where(['email' => $email])->one();
-        return $user;
-    }
-    public function getTwoFaEnabledById($id) {
-        return User::find()
-            ->select('two_fa_enabled')
-            ->where(['id' => $id])
-            ->scalar();
-    }
 }

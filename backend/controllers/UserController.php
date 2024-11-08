@@ -6,6 +6,8 @@ use Yii;
 use yii\web\Response;
 use backend\models\User;
 use backend\services\UserService;
+use common\models\Setup2FAForm;
+use yii\filters\ContentNegotiator;
 
 class UserController extends ActiveController
 {
@@ -24,45 +26,47 @@ class UserController extends ActiveController
         return $behaviors;
     }
 
+    public function actionGetQrCode($id)
+    {
+        $id = Yii::$app->request->get("id");
+        $user = User::findOne($id);
+        if (!$user) {
+            return $this->handleResponse(404, 'User not found');
+        }
+    
+        $qrCodeBase64 = $this->userService->generateTwoFactorQr($user);
+    
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return [
+            'qrCode' => $qrCodeBase64
+        ];
+    }
+    
+    public function actionUpdateTwoFa()
+    {
+        $model = new Setup2FAForm();
+        $model->attributes = Yii::$app->request->bodyParams;
+
+        if (!$model->validate()) {
+            return $this->handleResponse(400, 'Bad request', $model->getFirstErrors());
+        }
+
+        $updateResult = $this->userService->updateTwoFa($model);
+        if (isset($updateResult['error'])) {
+            return $this->handleResponse($updateResult['status'], $updateResult['error']);
+        }
+
+        return [
+            'message' => $updateResult['message'],
+            'data' => $updateResult['data'],
+        ];
+    }
+
     public function __construct($id, $module, UserService $userService, $config = [])
     {
         $this->userService = $userService;
         parent::__construct($id, $module, $config);
     }
-
-    // public function actionTwoFactorQr()
-    // {
-    //     $id = Yii::$app->request->get("id");
-    //     $user = User::findOne($id);
-    //     if (!$user) {
-    //         return $this->handleResponse(404, 'User not found');
-    //     }
-
-    //     Yii::$app->response->format = Response::FORMAT_RAW;
-    //     Yii::$app->response->headers->add('Content-Type', 'image/svg+xml');
-
-    //     return $this->userService->generateTwoFactorQr($user);
-    // }
-
-    // public function actionUpdateTwoFa()
-    // {
-    //     $model = new Update2FAForm();
-    //     $model->attributes = Yii::$app->request->bodyParams;
-
-    //     if (!$model->validate()) {
-    //         return $this->handleResponse(400, 'Bad request', $model->getFirstErrors());
-    //     }
-
-    //     $updateResult = $this->userService->updateTwoFa($model);
-    //     if (isset($updateResult['error'])) {
-    //         return $this->handleResponse($updateResult['status'], $updateResult['error']);
-    //     }
-
-    //     return [
-    //         'message' => $updateResult['message'],
-    //         'data' => $updateResult['data'],
-    //     ];
-    // }
 
     protected function handleResponse($statusCode, $message, $errors = null)
     {
@@ -72,4 +76,9 @@ class UserController extends ActiveController
             'message' => $errors ?? null,
         ];
     }
+
+    // public function actionIndex() {
+    //     $users = Yii::$app->db->createCommand("SELECT * FROM users")->queryAll();
+    //     return $users;
+    // }
 }

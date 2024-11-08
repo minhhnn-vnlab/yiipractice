@@ -21,13 +21,14 @@ class Yii {
 /**
  * @property yii\rbac\DbManager $authManager 
  * @property \yii\web\User|__WebUser $user
+ * @property RobThree\Auth\TwoFactorAuth $tfa
  * 
  */
 class __Application {
 }
 
 /**
- * @property app\models\User $identity
+ * @property backend\models\User $identity
  */
 class __WebUser {
 }

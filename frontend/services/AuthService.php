@@ -3,8 +3,8 @@
 namespace frontend\services;
 
 use common\models\LoginForm;
-use common\models\RegisterForm;
-
+use common\models\SignupForm;
+use backend\models\User;
 use Yii;
 
 
@@ -24,7 +24,28 @@ class AuthService
         $model->password = '';
         return $model;
     }
+    public function handleSignup()
+    {
+        $model = new SignupForm();
+        if ($model->load(Yii::$app->request->post())) {
+            return $this->processSignup($model);
+        }
+        return $model;
+    }
+    private function processSignup(SignupForm $model)
+    {
+        $httpClient = Yii::$app->httpClient;
+        $response = $httpClient->post("auth/register", $model->toArray())->send();
+        Yii::debug($response);
+        if ($response->getStatusCode() == 200) {
+            Yii::$app->session->setFlash("success", "Thank you for registration. Please login into your account");
+            return Yii::$app->controller->redirect("/site/login");
+        } else {
+            Yii::$app->session->setFlash("error", $response->data["message"]);
+        }
 
+        return $model;
+    }
     private function processLogin(LoginForm $model)
     {
         $httpClient = Yii::$app->httpClient;
@@ -32,13 +53,14 @@ class AuthService
             ->post('auth/login', $model->toArray())
             ->setHeaders($this->getRequestHeaders())
             ->send();
-
         if ($response->statusCode == 200) {
-            if($response->data["data"]["two_fa_enabled"] === "true") {
+            if($response->data["two_fa_enabled"] === "true") {
                 return $this->redirectToVerification($response, $model);
             }else{
-                Yii::$app->user->login($response->data["data"]["user"]); // Yii sẽ lưu thông tin người dùng vào phiên làm việc (session) và đánh dấu người dùng là đã đăng nhập.
-                return Yii::$app->controller->goHome();
+                $user = new User();
+                $user->attributes = $response->data["data"]["user"];
+                Yii::$app->user->login($user, 3600 * 24 * 30); // Yii sẽ lưu thông tin người dùng vào phiên làm việc (session) và đánh dấu người dùng là đã đăng nhập.
+                return Yii::$app->controller->redirect("/site/login-history");
             }
         } else {
             Yii::$app->session->setFlash("error", $response->data["message"] ?? 'Login failed.');
@@ -52,33 +74,33 @@ class AuthService
         $method = $response->data["data"]["verification"]["verification_method"];
         return Yii::$app->controller->redirect("/site/verify-login?id=$id&method=$method&email={$model->email}");
     }
-    public function handleVerifyLogin(TwoFAForm $model)
-    {
-        $id = Yii::$app->request->get("id");
-        $method = Yii::$app->request->get("method");
-        $email = Yii::$app->request->get("email");
+    // public function handleVerifyLogin(TwoFAForm $model)
+    // {
+    //     $id = Yii::$app->request->get("id");
+    //     $method = Yii::$app->request->get("method");
+    //     $email = Yii::$app->request->get("email");
 
-        if (empty($method) || $model->load(Yii::$app->request->post())) {
-            return $this->processVerification($model, $id);
-        }
+    //     if (empty($method) || $model->load(Yii::$app->request->post())) {
+    //         return $this->processVerification($model, $id);
+    //     }
 
-        return ['method' => $method, 'email' => $email, 'redirect' => null];
-    }
-    private function processVerification(TwoFAForm $model, $id)
-    {
-        $httpClient = Yii::$app->httpClient;
-        $response = $httpClient
-            ->post("auth/verify?id=$id", $model->toArray())
-            ->setHeaders($this->getRequestHeaders())
-            ->send();
+    //     return ['method' => $method, 'email' => $email, 'redirect' => null];
+    // }
+    // private function processVerification(TwoFAForm $model, $id)
+    // {
+    //     $httpClient = Yii::$app->httpClient;
+    //     $response = $httpClient
+    //         ->post("auth/verify?id=$id", $model->toArray())
+    //         ->setHeaders($this->getRequestHeaders())
+    //         ->send();
 
-        if ($response->getStatusCode() == 200) {
-            return $this->loginUser($response);
-        } else {
-            $this->handleVerificationError($response);
-            return ['redirect' => $response->data['data']['redirect'] ?? null];
-        }
-    }
+    //     if ($response->getStatusCode() == 200) {
+    //         return $this->loginUser($response);
+    //     } else {
+    //         $this->handleVerificationError($response);
+    //         return ['redirect' => $response->data['data']['redirect'] ?? null];
+    //     }
+    // }
     private function getRequestHeaders()
     {
         return [

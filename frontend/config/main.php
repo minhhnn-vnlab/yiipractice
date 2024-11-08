@@ -1,4 +1,13 @@
 <?php
+use frontend\services\LoginHistoryService;
+use frontend\repositories\LoginHistoryRepository;
+
+$container = Yii::$container;
+
+$container->setSingleton(LoginHistoryRepository::class);
+$container->setSingleton(LoginHistoryService::class, [], [
+    $container->get(LoginHistoryRepository::class),
+]);
 $params = array_merge(
     require __DIR__ . '/../../common/config/params.php',
     require __DIR__ . '/../../common/config/params-local.php',
@@ -16,7 +25,7 @@ return [
             'csrfParam' => '_csrf-frontend',
         ],
         'user' => [
-            'identityClass' => 'common\models\User',
+            'identityClass' => 'backend\models\User',
             'enableAutoLogin' => true,
             'identityCookie' => ['name' => '_identity-frontend', 'httpOnly' => true],
         ],
@@ -45,6 +54,9 @@ return [
         'httpClient' => [
             'class' => yii\httpclient\Client::class,
             'baseUrl' => 'http://nginx:8080/api'
+        ],
+        'loginHistoryService' => [
+            'class' => LoginHistoryService::class,
         ],
     ],
     'params' => $params,

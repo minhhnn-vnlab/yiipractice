@@ -1,7 +1,7 @@
 <?php
 
 namespace backend\models;
-
+use backend\models\User;
 use Yii;
 
 /**
@@ -16,7 +16,7 @@ use Yii;
  * @property string|null $issued_at
  * @property string|null $expired_at
  *
- * @property Users $user
+ * @property User $user
  */
 class Twofaverification extends \yii\db\ActiveRecord
 {
@@ -38,7 +38,7 @@ class Twofaverification extends \yii\db\ActiveRecord
             [['user_id', 'active', 'max_try', 'num_try'], 'integer'],
             [['issued_at', 'expired_at'], 'safe'],
             [['code'], 'string', 'max' => 6],
-            [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => Users::class, 'targetAttribute' => ['user_id' => 'id']],
+            [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['user_id' => 'id']],
         ];
     }
 
@@ -66,7 +66,7 @@ class Twofaverification extends \yii\db\ActiveRecord
      */
     public function getUser()
     {
-        return $this->hasOne(Users::class, ['id' => 'user_id']);
+        return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
     public function handle($verification_method)

@@ -68,7 +68,7 @@ class LoginForm extends Model
     public function login()
     {
         if ($this->validate()) {
-            return $this->_user;
+            return $this->getUser();
         }
         
         return false;
@@ -81,7 +81,7 @@ class LoginForm extends Model
      */
     protected function getUser()
     {
-        if ($this->_user === null) {
+        if (!isset($this->_user)) {
             $this->_user = User::find()->where(['email'=> $this->email])->one();
         }
 

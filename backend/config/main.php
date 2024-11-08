@@ -1,4 +1,6 @@
 <?php
+use RobThree\Auth\Providers\Qr\EndroidQrCodeProvider;
+use RobThree\Auth\TwoFactorAuth;
 $params = array_merge(
     require __DIR__ . '/../../common/config/params.php',
     require __DIR__ . '/../../common/config/params-local.php',
@@ -20,7 +22,7 @@ return [
             ]
         ],
         'user' => [
-            'identityClass' => 'common\models\User',
+            'identityClass' => 'backend\models\User',
             'enableAutoLogin' => true,
             'identityCookie' => ['name' => '_identity-backend', 'httpOnly' => true],
         ],
@@ -47,16 +49,17 @@ return [
             'rules' => [
                 [
                     'class' => 'yii\rest\UrlRule', 
-                    'controller' => ['users', 'login-history'], 
+                    'controller' => ['user', 'login-history'], 
                     'prefix' => 'api'
                 ],
                 'POST api/auth/login' => 'auth/login', 
                 'POST api/auth/register' => 'auth/register',
                 'POST api/auth/verify' => 'auth/verify', 
-                'GET api/user/two-factor-qr' => 'user/two-factor-qr',
+                'GET user/get-qr-code' => 'user/get-qr-code',
                 'PUT api/user/update-two-fa' => 'user/update-two-fa',
             ],
         ],
+        "tfa" => new TwoFactorAuth(new EndroidQrCodeProvider()),
     ],
     'params' => $params,
 ];

@@ -2,29 +2,25 @@
 
 namespace frontend\controllers;
 
-use frontend\models\ResendVerificationEmailForm;
-use frontend\models\VerifyEmailForm;
 use Yii;
-use yii\base\InvalidArgumentException;
-use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\models\LoginForm;
-use frontend\models\TwoFAForm;
-use frontend\models\SignupForm;
-
-
+use common\models\SignupForm;
+use frontend\services\AuthService;
+use frontend\services\Setup2faService;
 /**
  * Site controller
  */
 class SiteController extends Controller
 {
     protected $authService;
-
-    public function __construct($id, $module, AuthService $authService, $config = [])
+    protected $setup2faService;
+    public function __construct($id, $module, AuthService $authService, Setup2faService $setup2faService, $config = [])
     {
         $this->authService = $authService;
+        $this->setup2faService = $setup2faService;
         parent::__construct($id, $module, $config);
     }
     /**
@@ -97,25 +93,40 @@ class SiteController extends Controller
         }
         return $model;
     }
-
-    public function actionVerifyLogin()
+    public function actionLoginHistory()
     {
-        $model = new TwoFAForm();
-        $result = $this->authService->handleVerifyLogin($model);
-
-        if (isset($result['redirect'])) {
-            return $this->redirect($result['redirect']);
-        }
-
-        $method = Yii::$app->request->get("method");
-        $email = Yii::$app->request->get("email");
-
-        return $this->render('loginVerification', [
-            'method' => $method,
-            'email' => $email,
-            'model' => $model,
+        $userId = Yii::$app->user->id;
+        $dataProvider = Yii::$app->loginHistoryService->getLoginHistories($userId);
+        return $this->render("loginhistory", [
+            'dataProvider' => $dataProvider
         ]);
     }
+    public function actionUpdateTwofa()
+    {
+        $user = Yii::$app->user->identity;
+        return $this->render('setup2fa', [
+            'user' => $user,
+        ]);
+    }
+    
+    // public function actionVerifyLogin()
+    // {
+    //     $model = new TwoFAForm();
+    //     $result = $this->authService->handleVerifyLogin($model);
+
+    //     if (isset($result['redirect'])) {
+    //         return $this->redirect($result['redirect']);
+    //     }
+
+    //     $method = Yii::$app->request->get("method");
+    //     $email = Yii::$app->request->get("email");
+
+    //     return $this->render('loginVerification', [
+    //         'method' => $method,
+    //         'email' => $email,
+    //         'model' => $model,
+    //     ]);
+    // }
     /**
      * Logs out the current user.
      *
@@ -137,15 +148,13 @@ class SiteController extends Controller
      */
     public function actionSignup()
     {
-        $model = new SignupForm();
-        if ($model->load(Yii::$app->request->post()) && $model->signup()) {
-            Yii::$app->session->setFlash('success', 'Thank you for registration. Please check your inbox for verification email.');
-            return $this->goHome();
+        $model = $this->authService->handleSignup();
+        if ($model  instanceof SignupForm) {
+            return $this->render('signup', [
+                'model' => $model,
+            ]);
         }
-
-        return $this->render('signup', [
-            'model' => $model,
-        ]);
+        return $model;
     }
 
     

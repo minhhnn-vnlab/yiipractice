@@ -9,6 +9,11 @@ return [
         'cache' => [
             'class' => \yii\caching\FileCache::class,
         ],
+        'formatter' => [
+            'class' => 'yii\i18n\Formatter',
+            'defaultTimeZone' => 'Asia/Ho_Chi_Minh', 
+            'timeZone' => 'Asia/Ho_Chi_Minh', 
+        ],
     ],
     'modules' => [
         'debug' => [

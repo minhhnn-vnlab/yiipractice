@@ -1,4 +1,4 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Cài đặt PostgreSQL và các tiện ích cần thiết
 RUN apk update && apk add --no-cache \

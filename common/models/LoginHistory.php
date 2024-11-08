@@ -14,7 +14,7 @@ use backend\models\User;
  * @property string|null $user_agent
  * @property string|null $message
  *
- * @property Users $user
+ * @property User $user
  */
 class LoginHistory extends \yii\db\ActiveRecord
 {
@@ -38,7 +38,7 @@ class LoginHistory extends \yii\db\ActiveRecord
             [['ip_address'], 'string'],
             [['user_agent'], 'string', 'max' => 512],
             [['message'], 'string', 'max' => 32],
-            [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => Users::class, 'targetAttribute' => ['user_id' => 'id']],
+            [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['user_id' => 'id']],
         ];
     }
 
@@ -64,7 +64,7 @@ class LoginHistory extends \yii\db\ActiveRecord
      */
     public function getUser()
     {
-        return $this->hasOne(Users::class, ['id' => 'user_id']);
+        return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
     public function isFailed() {
