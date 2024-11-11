@@ -71,14 +71,14 @@ class SignupForm extends Model
      */
     public function validateEmail($attribute, $params)
     {
-        if(!$this->hasErrors()) {
+        if (!$this->hasErrors()) {
             try {
-                $user = User::find()->where(['email'=> $this->$attribute])->one();
-                if(!empty($user)) {
-                    $this->addError($attribute,'User with this email already exists.');
+                $user = User::find()->where(['email' => $this->$attribute])->one();
+                if (!empty($user)) {
+                    $this->addError($attribute, 'User with this email already exists.');
                 }
                 $emailValidator = new EmailValidator();
-                if(!$emailValidator->validate($this->email)) {
+                if (!$emailValidator->validate($this->email)) {
                     $this->addError($attribute, 'Email is not valid.');
                 }
             } catch (\Exception $e) {
@@ -86,7 +86,6 @@ class SignupForm extends Model
             }
         }
     }
-
     /**
      * Return a new user.
      *

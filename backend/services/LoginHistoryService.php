@@ -14,7 +14,7 @@ class LoginHistoryService {
         $login_history = new LoginHistory();
         $login_history->user_id = $user->id;
         $login_history->message = $message;
-        $remoteIp = Yii::$app->request->userIP;
+        $remoteIp = Yii::$app->request->headers->get('X-Real-IP');
         $login_history->ip_address = $remoteIp;
         $login_history->user_agent = Yii::$app->request->userAgent;
         $login_history->login_time = Yii::$app->formatter->asDatetime(time(), 'yyyy-MM-dd HH:mm:ss');
@@ -25,7 +25,7 @@ class LoginHistoryService {
     }
 
     /**
-     * Get recent login histories
+     * Get recent login historiesD
      * @param \backend\models\User $user
      * @param int $limit
      * @return LoginHistory[]

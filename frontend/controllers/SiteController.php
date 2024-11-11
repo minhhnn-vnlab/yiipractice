@@ -8,6 +8,7 @@ use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\models\LoginForm;
 use common\models\SignupForm;
+use common\models\CodeVerifyForm;
 use frontend\services\AuthService;
 use frontend\services\Setup2faService;
 /**
@@ -97,6 +98,7 @@ class SiteController extends Controller
     {
         $userId = Yii::$app->user->id;
         $dataProvider = Yii::$app->loginHistoryService->getLoginHistories($userId);
+        Yii::debug('Total count: ' . $dataProvider->getTotalCount());
         return $this->render("loginhistory", [
             'dataProvider' => $dataProvider
         ]);
@@ -109,24 +111,25 @@ class SiteController extends Controller
         ]);
     }
     
-    // public function actionVerifyLogin()
-    // {
-    //     $model = new TwoFAForm();
-    //     $result = $this->authService->handleVerifyLogin($model);
+    public function actionVerifyLogin()
+    {
+        $model = new CodeVerifyForm();
+        $id = Yii::$app->session->get('verification_id');
+        $method = Yii::$app->session->get('verification_method');
+        $email = Yii::$app->session->get('verification_email');
+        $result = $this->authService->handleVerifyLogin($model, $id, $method, $email);
 
-    //     if (isset($result['redirect'])) {
-    //         return $this->redirect($result['redirect']);
-    //     }
+        if (isset($result['redirect'])) {
+            return $this->redirect($result['redirect']);
+        }
 
-    //     $method = Yii::$app->request->get("method");
-    //     $email = Yii::$app->request->get("email");
 
-    //     return $this->render('loginVerification', [
-    //         'method' => $method,
-    //         'email' => $email,
-    //         'model' => $model,
-    //     ]);
-    // }
+        return $this->render('loginVerification', [
+            'method' => $method,
+            'email' => $email,
+            'model' => $model,
+        ]);
+    }
     /**
      * Logs out the current user.
      *

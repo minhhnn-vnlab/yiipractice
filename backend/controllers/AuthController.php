@@ -48,7 +48,12 @@ class AuthController extends Controller
         $model->attributes = Yii::$app->request->post();
 
         if (!$model->validate()) {
-            return $this->respondWithError(400, 'Bad request', $model->getFirstErrors());
+            $errors = $model->getFirstErrors();
+            $errorMessages = [];
+            foreach ($errors as $attribute => $error) {
+                $errorMessages[] = $error;
+            }
+            return $this->respondWithError(400, $errorMessages);
         }
 
         $user = $model->getUser();
@@ -92,14 +97,11 @@ class AuthController extends Controller
             return $this->respondWithError(404, 'Not Found', 'Login Verification with this id is not found');
         }
 
-        $ip = $this->getClientIp();
-        $ua = Yii::$app->request->userAgent;
-
         if ($login_verification->isExpired()) {
-            return $this->handleVerificationExpiration($login_verification, $ip, $ua);
+            return $this->handleVerificationExpiration($login_verification);
         }
 
-        return $this->processVerification($login_verification, $ip, $ua);
+        return $this->processVerification($login_verification);
     }
 
     // RESPONSES
@@ -136,7 +138,7 @@ class AuthController extends Controller
                 return $this->respondWithError(500, 'Internal Server Error', 'Something wrong when creating verification');
             }
 
-            $login_verification->handle($user->two_fa_method);
+            $this->userService->sendCodeEmail($login_verification, $user);
             return $this->respondWithSuccess(200, 'Successfully logged in by email and password, continue to verify the login.', "true", [
                 'verification' => [
                     'id' => $login_verification->id,
@@ -157,10 +159,10 @@ class AuthController extends Controller
         $user = $this->userService->getByEmail($email);
         if ($user !== null) {
             $this->logFailedLogin($user);
-            return $this->respondWithError(403, $reason, 'Unauthorized');
+            return $this->respondWithError(403, 'Password is incorrect', 'Unauthorized');
         }
 
-        return $this->respondWithError(403, "Unknown reason", 'Unauthorized');
+        return $this->respondWithError(403, $reason, 'Unauthorized');
     }
 
     protected function logFailedLogin($user, $reason = "login_fail_wrong_password")
@@ -174,65 +176,63 @@ class AuthController extends Controller
         return $remoteIp ?: Yii::$app->request->userIP;
     }
 
-    protected function handleVerificationExpiration($login_verification, $ip, $ua)
+    protected function handleVerificationExpiration($login_verification)
     {
         $user = $login_verification->user;
 
         if ($login_verification->active == 1) {
-            $this->logVerificationFailure($user, "login_fail_verification_expired", $login_verification->issued_at, $ip, $ua);
+            $this->logVerificationFailure($user, "login_fail_verification_expired", $login_verification->issued_at);
         }
 
         $this->twofaverificationService->deactivate($login_verification);
 
-        return $this->respondWithError(400, 'Login Verification already expired', ['redirect' => 'login']);
+        return $this->respondWithError(statusCode: 400, message: "Login Verification already expired", data: ['redirect' => 'login']);
     }
 
 
-    protected function logVerificationFailure($user, $message, $issuedAt, $ip, $ua)
+    protected function logVerificationFailure($user, $message, $issuedAt)
     {
         $this->loginHistoryService->createWithMessage($user, $message, Yii::$app->request);
     }
 
-    protected function processVerification($login_verification, $ip, $ua)
+    protected function processVerification($login_verification)
     {
         $code = Yii::$app->request->post('code');
-        $verifier = Yii::$app->twoFAVerifier;
-        $result = $verifier
-            ->useMethod($login_verification->verification_method)
-            ->verify($login_verification, $code);
-
-        $current_try = $login_verification->num_try + 1;
-        $remain = $login_verification->max_try - $current_try;
-
-        if (!$result) {
-            $login_verification->num_try = $current_try;
-            $login_verification->save();
-            if ($login_verification->hasExceedMaxTries()) {
-                return $this->handleMaxTriesExceeded($login_verification, $ip, $ua);
+        $user = $login_verification->user;
+        if($user->two_fa_method === "authenticator"){
+            if($this->twofaverificationService->verificateAuthenticator($user,$code)){
+                $this->twofaverificationService->deactivate($login_verification);
+                $this->loginHistoryService->createSuccess($login_verification->user, Yii::$app->request);
+                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true",data: [
+                    'user' => [
+                        'id' => $login_verification->user->id,
+                        'name' => $login_verification->user->name,
+                        'email' => $login_verification->user->email,
+                        'two_fa_method' => $login_verification->user->two_fa_method,
+                        'two_fa_secret' => $login_verification->user->two_fa_secret,
+                    ],
+                    'redirect' => 'loginhistory'
+                ]);
+            }else{
+                return $this->respondWithError(statusCode: 403, message: 'Verification code is not correct.');
             }
-            return $this->respondWithError(403, 'Verification code is not correct.', [
-                'num_try' => $current_try,
-                'max_try' => $login_verification->max_try,
-                'message' => "You have $remain attempts left."
-            ]);
+        }else if($user->two_fa_method==="email"){
+            if($login_verification->code === $code){
+                $this->twofaverificationService->deactivate($login_verification);
+                $this->loginHistoryService->createSuccess($login_verification->user, Yii::$app->request);
+                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true",data: [
+                    'user' => [
+                        'id' => $login_verification->user->id,
+                        'name' => $login_verification->user->name,
+                        'email' => $login_verification->user->email,
+                        'two_fa_method' => $login_verification->user->two_fa_method,
+                        'two_fa_secret' => $login_verification->user->two_fa_secret,
+                    ],
+                    'redirect' => 'loginhistory'
+                ]);
+            }else{
+                return $this->respondWithError(statusCode: 403, message: 'Verification code is not correct.');
+            }
         }
-
-        $this->twofaverificationService->deactivate($login_verification);
-        $this->loginHistoryService->createSuccess($login_verification->user, Yii::$app->request);
-        return [
-            'message' => 'Verified',
-            'data' => [
-                'user' => [
-                    'id' => $login_verification->user->id,
-                    'name' => $login_verification->user->name,
-                    'email' => $login_verification->user->email,
-                    'phone_number' => $login_verification->user->phone_number,
-                    'two_fa_method' => $login_verification->user->two_fa_method,
-                    'two_fa_secret' => $login_verification->user->two_fa_secret,
-                ],
-                'ip' => $ip,
-                'ua' => $ua,
-            ]
-        ];
     }
 }

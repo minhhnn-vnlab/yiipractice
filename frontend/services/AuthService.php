@@ -4,6 +4,7 @@ namespace frontend\services;
 
 use common\models\LoginForm;
 use common\models\SignupForm;
+use common\models\CodeVerifyForm;
 use backend\models\User;
 use Yii;
 
@@ -72,35 +73,46 @@ class AuthService
     {
         $id = $response->data["data"]["verification"]["id"];
         $method = $response->data["data"]["verification"]["verification_method"];
-        return Yii::$app->controller->redirect("/site/verify-login?id=$id&method=$method&email={$model->email}");
+        $email = $model->email;
+
+        Yii::$app->session->set('verification_id', $id);
+        Yii::$app->session->set('verification_method', $method);
+        Yii::$app->session->set('verification_email', $email);
+
+        return Yii::$app->controller->redirect("/site/verify-login");
     }
-    // public function handleVerifyLogin(TwoFAForm $model)
-    // {
-    //     $id = Yii::$app->request->get("id");
-    //     $method = Yii::$app->request->get("method");
-    //     $email = Yii::$app->request->get("email");
+    public function handleVerifyLogin(CodeVerifyForm $model, $id, $method, $email)
+    {
+        if (empty($method) || $model->load(Yii::$app->request->post())) {
+            return $this->processVerification($model, $id);
+        }
 
-    //     if (empty($method) || $model->load(Yii::$app->request->post())) {
-    //         return $this->processVerification($model, $id);
-    //     }
+        return ['method' => $method, 'email' => $email, 'redirect' => null];
+    }
+    private function processVerification(CodeVerifyForm $model, $id)
+    {
+        $httpClient = Yii::$app->httpClient;
+        $response = $httpClient
+            ->post("auth/verify?id=$id", $model->toArray())
+            ->setHeaders($this->getRequestHeaders())
+            ->send();
 
-    //     return ['method' => $method, 'email' => $email, 'redirect' => null];
-    // }
-    // private function processVerification(TwoFAForm $model, $id)
-    // {
-    //     $httpClient = Yii::$app->httpClient;
-    //     $response = $httpClient
-    //         ->post("auth/verify?id=$id", $model->toArray())
-    //         ->setHeaders($this->getRequestHeaders())
-    //         ->send();
-
-    //     if ($response->getStatusCode() == 200) {
-    //         return $this->loginUser($response);
-    //     } else {
-    //         $this->handleVerificationError($response);
-    //         return ['redirect' => $response->data['data']['redirect'] ?? null];
-    //     }
-    // }
+        if ($response->getStatusCode() == 200) {
+            $user = new User();
+            $user->attributes = $response->data["data"]["user"];
+            Yii::$app->user->login($user, 3600 * 24 * 30);
+            return ['redirect' => '/site/login-history'];
+        } else {
+            $this->handleVerificationError($response);
+            return ['redirect' => $response->data['data']['redirect'] ?? null];
+        }
+    }
+    private function handleVerificationError($response)
+    {
+        if (isset($response->data["message"])) {
+            Yii::$app->session->setFlash("error", $response->data["message"]);
+        } 
+    }
     private function getRequestHeaders()
     {
         return [

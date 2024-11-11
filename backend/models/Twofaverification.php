@@ -69,18 +69,6 @@ class Twofaverification extends \yii\db\ActiveRecord
         return $this->hasOne(User::class, ['id' => 'user_id']);
     }
 
-    public function handle($verification_method)
-    {
-        if ($verification_method == 'email') {
-            Yii::$app->mailer->compose()
-                ->setFrom("website@example.com")
-                ->setTo($this->user->email)
-                ->setSubject("Login Two-Factor Verification")
-                ->setTextBody("Your verification code: " . $this->code . "\n" . "Please don't share this bla bla bla")
-                ->send();
-        }
-    }
-
     public function isExpired()
     {
         return time() > strtotime($this->expired_at) || $this->active == 0;

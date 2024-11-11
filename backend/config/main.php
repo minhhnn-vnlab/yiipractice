@@ -55,8 +55,9 @@ return [
                 'POST api/auth/login' => 'auth/login', 
                 'POST api/auth/register' => 'auth/register',
                 'POST api/auth/verify' => 'auth/verify', 
-                'GET user/get-qr-code' => 'user/get-qr-code',
-                'PUT api/user/update-two-fa' => 'user/update-two-fa',
+                'GET api/user/get-qr-code' => 'user/get-qr-code',
+                'POST api/user/confirm-2fa' => 'user/update-two-fa',
+                'GET api/user/sendCodeEmail' => 'user/send-code-email'
             ],
         ],
         "tfa" => new TwoFactorAuth(new EndroidQrCodeProvider()),

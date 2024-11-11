@@ -1,6 +1,7 @@
 <?php
 namespace backend\controllers;
 
+use backend\models\Twofaverification;
 use yii\rest\ActiveController;
 use Yii;
 use yii\web\Response;
@@ -8,22 +9,39 @@ use backend\models\User;
 use backend\services\UserService;
 use common\models\Setup2FAForm;
 use yii\filters\ContentNegotiator;
+use backend\services\TwofaverificationService;
 
 class UserController extends ActiveController
 {
     public $modelClass = "backend\models\User";
     protected $userService;
 
+    protected TwofaverificationService $twofaverificationService;
     public function behaviors()
     {
-        $behaviors = parent::behaviors();
-        $behaviors['contentNegotiator'] = [
-            'class' => ContentNegotiator::class,
-            'formats' => [
-                'application/json' => Response::FORMAT_JSON,
+        return [
+            'corsFilter' => [
+                'class' => \yii\filters\Cors::class,
+                'cors' => [
+                    'Origin' => ['http://y2aa.test:8081'],
+                    'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+                    'Access-Control-Request-Headers' => ['*'],
+                    'Access-Control-Allow-Credentials' => true,
+                    'Access-Control-Max-Age' => 86400,
+                ],
             ],
         ];
-        return $behaviors;
+    }
+    public function __construct(
+        $id,
+        $module,
+        TwofaverificationService $twofaverificationService,
+        UserService $userService,
+        $config = []
+    ) {
+        $this->twofaverificationService = $twofaverificationService;
+        $this->userService = $userService;
+        parent::__construct($id, $module, $config);
     }
 
     public function actionGetQrCode($id)
@@ -41,32 +59,61 @@ class UserController extends ActiveController
             'qrCode' => $qrCodeBase64
         ];
     }
+
+    public function actionSendCodeEmail($id)
+    {
+        $id = Yii::$app->request->get("id");
+        $user = User::findOne($id);
+        if (!$user) {
+            return $this->handleResponse(404, 'User not found');
+        }
+    
+        $login_verification = Twofaverification::find()->where(['user_id' => $user->id])->one() ?? new Twofaverification();
+        if($this->userService->sendCodeEmail($login_verification, $user)){
+            Yii::$app->response->format = Response::FORMAT_JSON;
+            return [
+                'status' => 200,
+                'message'=> 'Success send code email',
+            ];
+        }
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return [
+            'status' => 500,
+            'message'=> 'Fail send code email',
+        ];
+    }
+
     
     public function actionUpdateTwoFa()
     {
         $model = new Setup2FAForm();
         $model->attributes = Yii::$app->request->bodyParams;
-
+    
         if (!$model->validate()) {
-            return $this->handleResponse(400, 'Bad request', $model->getFirstErrors());
+            Yii::$app->response->format = Response::FORMAT_JSON;
+            return [
+                'status' => 400,
+                'error' => 'Bad request',
+                'errors' => $model->getFirstErrors()
+            ];
         }
-
+    
         $updateResult = $this->userService->updateTwoFa($model);
         if (isset($updateResult['error'])) {
-            return $this->handleResponse($updateResult['status'], $updateResult['error']);
+            Yii::$app->response->format = Response::FORMAT_JSON;
+            return [
+                'status' => $updateResult['status'],
+                'error' => $updateResult['error']
+            ];
         }
-
+    
+        Yii::$app->response->format = Response::FORMAT_JSON;
         return [
             'message' => $updateResult['message'],
             'data' => $updateResult['data'],
         ];
     }
 
-    public function __construct($id, $module, UserService $userService, $config = [])
-    {
-        $this->userService = $userService;
-        parent::__construct($id, $module, $config);
-    }
 
     protected function handleResponse($statusCode, $message, $errors = null)
     {
@@ -76,9 +123,4 @@ class UserController extends ActiveController
             'message' => $errors ?? null,
         ];
     }
-
-    // public function actionIndex() {
-    //     $users = Yii::$app->db->createCommand("SELECT * FROM users")->queryAll();
-    //     return $users;
-    // }
 }

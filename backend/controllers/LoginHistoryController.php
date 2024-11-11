@@ -6,6 +6,7 @@ use yii\rest\ActiveController;
 use yii\web\Response;
 use yii\filters\ContentNegotiator;
 use common\models\LoginHistory;
+use backend\components\CustomDataProvider;
 use yii;
 class LoginHistoryController extends ActiveController
 {
@@ -55,7 +56,7 @@ class LoginHistoryController extends ActiveController
             }
         }
 
-        return new ActiveDataProvider([
+        return new CustomDataProvider([
             'query' => $query,
         ]);
     }

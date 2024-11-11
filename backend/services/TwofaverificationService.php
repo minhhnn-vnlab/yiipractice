@@ -4,6 +4,7 @@ namespace backend\services;
 use \backend\models\User;
 use \backend\models\Twofaverification;
 use \backend\utils\DateConvert;
+use common\models\Setup2FAForm;
 use Yii;
 
 class TwofaverificationService {
@@ -34,5 +35,12 @@ class TwofaverificationService {
     public function deactivate(Twofaverification $login_verification) {
         $login_verification->active = 0;
         return $login_verification->save();
+    }
+
+    public function verificateAuthenticator($user,$code){
+        $secret = $user->two_fa_secret;
+
+        $tfa = Yii::$app->tfa;
+        return $tfa->verifyCode($secret, $code);
     }
 }

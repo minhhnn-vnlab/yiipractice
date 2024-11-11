@@ -9,6 +9,8 @@ use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\SvgWriter;
 use common\models\Setup2FAForm;
+use backend\models\Twofaverification;
+use \backend\utils\DateConvert;
 use Yii;
 
 class UserService
@@ -30,17 +32,23 @@ class UserService
             return ['error' => 'User not found', 'status' => 404];
         }
 
-        if ($model->two_fa_method == 'google_authenticator') {
+        if ($model->two_fa_method == 'authenticator') {
             $tfa = Yii::$app->tfa;
             $result = $tfa->verifyCode($user->two_fa_secret, $model->code);
 
             if (!$result) {
                 return ['error' => 'Invalid authenticator code', 'status' => 400];
             }
+        }else if ($model->two_fa_method == 'email') {
+            $login_verification = Twofaverification::find()->where(['user_id' => $model->user_id])->one() ?? new Twofaverification();
+            $result = $login_verification->code === $model->code;
+            if (!$result) {
+                return ['error' => 'Invalid email code', 'status' => 400];
+            }
         }
 
         $user->two_fa_method = $model->two_fa_method ?: null;
-
+        $user->two_fa_enabled=true;
         if (!$user->save()) {
             return ['error' => 'Failed to save user', 'status' => 500];
         }
@@ -64,10 +72,36 @@ class UserService
             backgroundColor: new Color(255, 255, 255)
         );
 
-        $svgString = $writer->write($qrCode)->getString();
-        $base64Image = 'data:image/svg+xml;base64,' . base64_encode($svgString);
-
-        return $base64Image;
+        return $writer->write($qrCode)->getString();
     }
 
+    public function sendCodeEmail($login_verification, $user)
+    {
+        if ($login_verification->isNewRecord) {
+            $time = time();
+            $exp = $time + 60;
+
+            $login_verification->setAttributes([
+                'user_id' => $user->id,
+                'issued_at' => DateConvert::convertToSQL($time),
+                'expired_at' => DateConvert::convertToSQL($exp),
+                'code' => Yii::$app->security->generateRandomString(6),
+                'active' => 0,
+                'num_try' => 0,
+            ]);
+
+            if (!$login_verification->save()) {
+                return false;
+            }
+        }
+
+        $result = Yii::$app->mailer->compose()
+            ->setTo($login_verification->user->email)
+            ->setFrom(['a@example.com' => 'Your App'])
+            ->setSubject('Verification Code')
+            ->setTextBody("Your verification code is: $login_verification->code")
+            ->send();
+
+        return $result;
+    }
 }
