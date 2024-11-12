@@ -25,6 +25,14 @@ class UserService
             ->where(['id' => $id])
             ->scalar();
     }
+    public function getTwofaMethodById($id) {
+        if($id){
+            return User::find()
+            ->select('two_fa_method')
+            ->where(['id'=> $id])
+            ->scalar();
+        }
+    }
     public function updateTwoFa(Setup2FAForm $model)
     {
         $user = User::findOne($model->user_id);
@@ -39,16 +47,20 @@ class UserService
             if (!$result) {
                 return ['error' => 'Invalid authenticator code', 'status' => 400];
             }
+            $user->two_fa_enabled=true;
         }else if ($model->two_fa_method == 'email') {
             $login_verification = Twofaverification::find()->where(['user_id' => $model->user_id])->one() ?? new Twofaverification();
             $result = $login_verification->code === $model->code;
             if (!$result) {
                 return ['error' => 'Invalid email code', 'status' => 400];
             }
+            $user->two_fa_enabled=true;
+        }else{
+            $user->two_fa_enabled=false;
         }
 
         $user->two_fa_method = $model->two_fa_method ?: null;
-        $user->two_fa_enabled=true;
+        
         if (!$user->save()) {
             return ['error' => 'Failed to save user', 'status' => 500];
         }
@@ -77,7 +89,6 @@ class UserService
 
     public function sendCodeEmail($login_verification, $user)
     {
-        if ($login_verification->isNewRecord) {
             $time = time();
             $exp = $time + 60;
 
@@ -86,14 +97,12 @@ class UserService
                 'issued_at' => DateConvert::convertToSQL($time),
                 'expired_at' => DateConvert::convertToSQL($exp),
                 'code' => Yii::$app->security->generateRandomString(6),
-                'active' => 0,
                 'num_try' => 0,
             ]);
 
             if (!$login_verification->save()) {
                 return false;
             }
-        }
 
         $result = Yii::$app->mailer->compose()
             ->setTo($login_verification->user->email)

@@ -114,7 +114,24 @@ class UserController extends ActiveController
         ];
     }
 
-
+    public function actionGetTwofaMethod(){
+        $id = Yii::$app->request->get('id');
+        $twofamethod = $this->userService->getTwofaMethodById($id);
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        if($twofamethod){
+            return [
+                'status'=> 200,
+                'TwoFaMethod' => $twofamethod,
+                'message' => 'success'
+            ];
+        }else{
+            return [
+                'status'=> 400,
+                'TwoFaMethod' => $twofamethod,
+                'message' => 'Not load method'
+            ];
+        }
+    }
     protected function handleResponse($statusCode, $message, $errors = null)
     {
         Yii::$app->response->statusCode = $statusCode;

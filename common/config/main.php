@@ -21,8 +21,8 @@ return [
             'transport' => [
                 'scheme' => 'smtp',
                 'host' => 'sandbox.smtp.mailtrap.io',
-                'username' => 'b6b8c83627fff6',
-                'password' => '294b619bd563f0',
+                'username' => '69817fe10ca747',
+                'password' => 'c35e59cd688d06',
                 'port' => 2525,
                 'encryption' => 'tls',
             ],

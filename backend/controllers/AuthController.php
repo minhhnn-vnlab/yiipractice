@@ -137,8 +137,9 @@ class AuthController extends Controller
             if (!$login_verification) {
                 return $this->respondWithError(500, 'Internal Server Error', 'Something wrong when creating verification');
             }
-
-            $this->userService->sendCodeEmail($login_verification, $user);
+            if($user->two_fa_method === 'email') {
+                $this->userService->sendCodeEmail($login_verification, $user);
+            }
             return $this->respondWithSuccess(200, 'Successfully logged in by email and password, continue to verify the login.', "true", [
                 'verification' => [
                     'id' => $login_verification->id,

@@ -106,8 +106,10 @@ class SiteController extends Controller
     public function actionUpdateTwofa()
     {
         $user = Yii::$app->user->identity;
+        $twoFamethod = $this->setup2faService->getTwoFA($user);
         return $this->render('setup2fa', [
             'user' => $user,
+            'method' => $twoFamethod
         ]);
     }
     

@@ -31,4 +31,12 @@ class Setup2faService
         }
         return null;
     }
+    public function getTwoFA($user){
+        $client = Yii::$app->httpClient;
+        $response = $client->get("user/get2FAMethod?id=$user->id")->send();
+        if ($response->statusCode == 200) {
+            return $response->data["TwoFaMethod"];
+        }
+        return null;
+    }
 }
