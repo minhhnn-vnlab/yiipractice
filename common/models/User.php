@@ -1,6 +1,6 @@
 <?php
 
-namespace backend\models;
+namespace common\models;
 
 use Yii;
 use common\models\LoginHistory;
@@ -15,6 +15,7 @@ use yii\web\IdentityInterface;
  * @property string|null $email
  * @property string|null $password_hash
  * @property bool|null $two_fa_enabled
+ * @property bool|null $locked
  * @property string|null $two_fa_method
  * @property string|null $two_fa_secret
  * @property string|null $created_at
@@ -47,6 +48,7 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
             [['email'], 'string', 'max' => 256],
             [['password_hash'], 'string', 'max' => 60],
             [['two_fa_secret'], 'string', 'max' => 64],
+            [['locked'], 'boolean'],
         ];
     }
 
@@ -65,6 +67,7 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
             'two_fa_secret' => 'Two Fa Secret',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
+            'locked' => 'Locked',
         ];
     }
 
@@ -79,7 +82,7 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
         return $this->hasMany(Twofaverification::class, ['user_id' => 'id']);
     }
 
-       /**
+    /**
      * Gets query for [[LoginHistories]].
      *
      * @return \yii\db\ActiveQuery
@@ -100,7 +103,7 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
     }
 
 
-       /**
+    /**
      * Finds an identity by the given ID.
      *
      * @param string|int $id the ID to be looked for
@@ -108,7 +111,7 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
      */
     public static function findIdentity($id)
     {
-        return User::find()->where(['id'=> $id])->one();
+        return User::find()->where(['id' => $id])->one();
     }
 
     /**
@@ -138,7 +141,10 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
     {
         return $this->two_fa_secret;
     }
-
+    public function isLocked()
+    {
+        return $this->locked;
+    }
     /**
      * @param string $authKey
      * @return bool if auth key is valid for current user

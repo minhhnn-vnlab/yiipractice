@@ -1,19 +1,22 @@
 <?php
+
 namespace common\models;
 
 use Yii;
 use yii\base\Model;
 
-class Setup2FAForm extends Model {
+class Setup2FAForm extends Model
+{
     public $user_id;
     public $two_fa_method;
     public $code;
 
-    public function rules() {
+    public function rules()
+    {
         return [
             [["user_id"], "required"],
             ["two_fa_method", "safe"],
-            ["code", "string", "max" => 6],
+            ["code", "string", "max" => 8],
         ];
     }
 }

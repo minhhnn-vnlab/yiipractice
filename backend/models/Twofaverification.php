@@ -1,7 +1,8 @@
 <?php
 
 namespace backend\models;
-use backend\models\User;
+
+use common\models\User;
 use Yii;
 
 /**
@@ -37,7 +38,7 @@ class Twofaverification extends \yii\db\ActiveRecord
             [['user_id', 'active', 'max_try', 'num_try'], 'default', 'value' => null],
             [['user_id', 'active', 'max_try', 'num_try'], 'integer'],
             [['issued_at', 'expired_at'], 'safe'],
-            [['code'], 'string', 'max' => 6],
+            [['code'], 'string', 'max' => 8],
             [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['user_id' => 'id']],
         ];
     }

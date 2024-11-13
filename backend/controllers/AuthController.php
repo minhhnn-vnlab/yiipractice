@@ -41,7 +41,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // ACTIONS
     public function actionRegister()
     {
         $model = new SignupForm();
@@ -82,6 +81,9 @@ class AuthController extends Controller
         $user = $model->login();
 
         if ($user) {
+            if ($user->locked == true) {
+                return $this->handleFailedLogin($model->email, 'Account is locked');
+            }
             return $this->handleSuccessfulLogin($user);
         }
 
@@ -104,9 +106,7 @@ class AuthController extends Controller
         return $this->processVerification($login_verification);
     }
 
-    // RESPONSES
-
-    protected function respondWithError($statusCode, $message, $data = null)
+    protected function respondWithError($statusCode, $message, $data = [])
     {
         Yii::$app->response->statusCode = $statusCode;
         return [
@@ -126,8 +126,6 @@ class AuthController extends Controller
         ];
     }
 
-    // HANDLERS
-
     protected function handleSuccessfulLogin($user)
     {
         $two_fa_enabled = $this->userService->getTwoFaEnabledById($user->id);
@@ -137,7 +135,7 @@ class AuthController extends Controller
             if (!$login_verification) {
                 return $this->respondWithError(500, 'Internal Server Error', 'Something wrong when creating verification');
             }
-            if($user->two_fa_method === 'email') {
+            if ($user->two_fa_method === 'email') {
                 $this->userService->sendCodeEmail($login_verification, $user);
             }
             return $this->respondWithSuccess(200, 'Successfully logged in by email and password, continue to verify the login.', "true", [
@@ -149,32 +147,48 @@ class AuthController extends Controller
         } else {
             $this->loginHistoryService->createSuccess($user, Yii::$app->request);
             return $this->respondWithSuccess(200, 'Successfully logged in by email and password.', "false", [
-                "user"=> $user,
+                "user" => $user,
             ]);
         }
     }
 
     protected function handleFailedLogin($email, $reason = 'Email or password is incorrect')
     {
-
         $user = $this->userService->getByEmail($email);
         if ($user !== null) {
-            $this->logFailedLogin($user);
-            return $this->respondWithError(403, 'Password is incorrect', 'Unauthorized');
+            if ($user->locked == true) {
+                $reason = "login_fail_locked";
+                $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
+                return $this->respondWithError(403, 'Account is locked', [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'locked' => $user->locked,
+                    ],
+                ]);
+            } else {
+                $reason = "login_fail_wrong_password";
+                $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
+                if ($this->loginHistoryService->getRecentFailLoginHistories($user, $reason) === true) {
+                    $user->locked = true;
+                    $user->save();
+                    return $this->respondWithError(403, 'Account is locked', [
+                        'user' => [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'locked' => $user->locked,
+                        ],
+                    ]);
+                } else {
+                    return $this->respondWithError(403, 'You have entered the wrong password ' . $this->loginHistoryService->getRecentFailLoginHistories($user, $reason) . ' times', 'Unauthorized');
+                }
+                return $this->respondWithError(403, 'Password is incorrect', 'Unauthorized');
+            }
         }
 
         return $this->respondWithError(403, $reason, 'Unauthorized');
-    }
-
-    protected function logFailedLogin($user, $reason = "login_fail_wrong_password")
-    {
-        $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
-    }
-
-    protected function getClientIp()
-    {
-        $remoteIp = Yii::$app->request->headers->get('X-Real-IP');
-        return $remoteIp ?: Yii::$app->request->userIP;
     }
 
     protected function handleVerificationExpiration($login_verification)
@@ -182,7 +196,8 @@ class AuthController extends Controller
         $user = $login_verification->user;
 
         if ($login_verification->active == 1) {
-            $this->logVerificationFailure($user, "login_fail_verification_expired", $login_verification->issued_at);
+            $reason = "login_fail_verification_expired";
+            $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
         }
 
         $this->twofaverificationService->deactivate($login_verification);
@@ -190,21 +205,15 @@ class AuthController extends Controller
         return $this->respondWithError(statusCode: 400, message: "Login Verification already expired", data: ['redirect' => 'login']);
     }
 
-
-    protected function logVerificationFailure($user, $message, $issuedAt)
-    {
-        $this->loginHistoryService->createWithMessage($user, $message, Yii::$app->request);
-    }
-
     protected function processVerification($login_verification)
     {
         $code = Yii::$app->request->post('code');
         $user = $login_verification->user;
-        if($user->two_fa_method === "authenticator"){
-            if($this->twofaverificationService->verificateAuthenticator($user,$code)){
+        if ($user->two_fa_method === "authenticator") {
+            if ($this->twofaverificationService->verificateAuthenticator($user, $code)) {
                 $this->twofaverificationService->deactivate($login_verification);
                 $this->loginHistoryService->createSuccess($login_verification->user, Yii::$app->request);
-                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true",data: [
+                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true", data: [
                     'user' => [
                         'id' => $login_verification->user->id,
                         'name' => $login_verification->user->name,
@@ -214,14 +223,30 @@ class AuthController extends Controller
                     ],
                     'redirect' => 'loginhistory'
                 ]);
-            }else{
+            } else {
+                $reason = "login_fail_verification_code";
+                $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
+                if ($this->loginHistoryService->getRecentFailLoginHistories($user, $reason) === true) {
+                    $user->locked = true;
+                    $user->save();
+                    return $this->respondWithError(403, 'Account is locked', [
+                        'user' => [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'locked' => $user->locked,
+                        ],
+                    ]);
+                } else {
+                    return $this->respondWithError(403, 'You entered the wrong code ' . $this->loginHistoryService->getRecentFailLoginHistories($user, $reason) . ' times', 'Unauthorized');
+                }
                 return $this->respondWithError(statusCode: 403, message: 'Verification code is not correct.');
             }
-        }else if($user->two_fa_method==="email"){
-            if($login_verification->code === $code){
+        } else if ($user->two_fa_method === "email") {
+            if ($login_verification->code === $code) {
                 $this->twofaverificationService->deactivate($login_verification);
                 $this->loginHistoryService->createSuccess($login_verification->user, Yii::$app->request);
-                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true",data: [
+                return $this->respondWithSuccess(statusCode: 200, message: 'Verified', two_fa_enabled: "true", data: [
                     'user' => [
                         'id' => $login_verification->user->id,
                         'name' => $login_verification->user->name,
@@ -231,7 +256,23 @@ class AuthController extends Controller
                     ],
                     'redirect' => 'loginhistory'
                 ]);
-            }else{
+            } else {
+                $reason = "login_fail_verification_code";
+                $this->loginHistoryService->createWithMessage($user, $reason, Yii::$app->request);
+                if ($this->loginHistoryService->getRecentFailLoginHistories($user, $reason) === true) {
+                    $user->locked = true;
+                    $user->save();
+                    return $this->respondWithError(403, 'Account is locked', [
+                        'user' => [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'locked' => $user->locked,
+                        ],
+                    ]);
+                } else {
+                    return $this->respondWithError(403, 'You entered the wrong code ' . $this->loginHistoryService->getRecentFailLoginHistories($user, $reason) . ' times', 'Unauthorized');
+                }
                 return $this->respondWithError(statusCode: 403, message: 'Verification code is not correct.');
             }
         }

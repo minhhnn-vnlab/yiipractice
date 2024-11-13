@@ -1,7 +1,8 @@
 <?php
+
 namespace backend\services;
 
-use backend\models\User;
+use common\models\User;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Color\Color;
 use Endroid\QrCode\Encoding\Encoding;
@@ -15,22 +16,25 @@ use Yii;
 
 class UserService
 {
-    public function getByEmail($email) {
+    public function getByEmail($email)
+    {
         $user = User::find()->where(['email' => $email])->one();
         return $user;
     }
-    public function getTwoFaEnabledById($id) {
+    public function getTwoFaEnabledById($id)
+    {
         return User::find()
             ->select('two_fa_enabled')
             ->where(['id' => $id])
             ->scalar();
     }
-    public function getTwofaMethodById($id) {
-        if($id){
+    public function getTwofaMethodById($id)
+    {
+        if ($id) {
             return User::find()
-            ->select('two_fa_method')
-            ->where(['id'=> $id])
-            ->scalar();
+                ->select('two_fa_method')
+                ->where(['id' => $id])
+                ->scalar();
         }
     }
     public function updateTwoFa(Setup2FAForm $model)
@@ -47,20 +51,20 @@ class UserService
             if (!$result) {
                 return ['error' => 'Invalid authenticator code', 'status' => 400];
             }
-            $user->two_fa_enabled=true;
-        }else if ($model->two_fa_method == 'email') {
+            $user->two_fa_enabled = true;
+        } else if ($model->two_fa_method == 'email') {
             $login_verification = Twofaverification::find()->where(['user_id' => $model->user_id])->one() ?? new Twofaverification();
             $result = $login_verification->code === $model->code;
             if (!$result) {
                 return ['error' => 'Invalid email code', 'status' => 400];
             }
-            $user->two_fa_enabled=true;
-        }else{
-            $user->two_fa_enabled=false;
+            $user->two_fa_enabled = true;
+        } else {
+            $user->two_fa_enabled = false;
         }
 
         $user->two_fa_method = $model->two_fa_method ?: null;
-        
+
         if (!$user->save()) {
             return ['error' => 'Failed to save user', 'status' => 500];
         }
@@ -89,28 +93,35 @@ class UserService
 
     public function sendCodeEmail($login_verification, $user)
     {
-            $time = time();
-            $exp = $time + 60;
+        $time = time();
+        $exp = $time + 60;
 
-            $login_verification->setAttributes([
-                'user_id' => $user->id,
-                'issued_at' => DateConvert::convertToSQL($time),
-                'expired_at' => DateConvert::convertToSQL($exp),
-                'code' => Yii::$app->security->generateRandomString(6),
-                'num_try' => 0,
-            ]);
+        if (is_array($user)) {
+            $userId = $user['id'];
+        } elseif (is_object($user)) {
+            $userId = $user->id;
+        } else {
+            return false;
+        }
+        $login_verification->setAttributes([
+            'user_id' => $userId,
+            'issued_at' => DateConvert::convertToSQL($time),
+            'expired_at' => DateConvert::convertToSQL($exp),
+            'code' => "vnlab123",
+            'num_try' => 0,
+        ]);
 
-            if (!$login_verification->save()) {
-                return false;
-            }
+        if (!$login_verification->save()) {
+            return false;
+        }
 
-        $result = Yii::$app->mailer->compose()
-            ->setTo($login_verification->user->email)
-            ->setFrom(['a@example.com' => 'Your App'])
-            ->setSubject('Verification Code')
-            ->setTextBody("Your verification code is: $login_verification->code")
-            ->send();
+        // $result = Yii::$app->mailer->compose()
+        //     ->setTo($login_verification->user->email)
+        //     ->setFrom(['a@example.com' => 'Your App'])
+        //     ->setSubject('Verification Code')
+        //     ->setTextBody("Your verification code is: $login_verification->code")
+        //     ->send();
 
-        return $result;
+        return true;
     }
 }

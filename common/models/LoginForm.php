@@ -4,7 +4,8 @@ namespace common\models;
 
 use Yii;
 use yii\base\Model;
-use backend\models\User;
+use common\models\User;
+
 /**
  * Login form
  */
@@ -43,7 +44,7 @@ class LoginForm extends Model
     {
         if (!$this->hasErrors()) {
             $user = $this->getUser();
-            if(!Yii::$app->security->validatePassword($this->password, $user->password_hash)) {
+            if (!Yii::$app->security->validatePassword($this->password, $user->password_hash)) {
                 $this->addError($attribute, 'Password is incorrect!');
             }
         }
@@ -53,24 +54,20 @@ class LoginForm extends Model
     {
         if (!$this->hasErrors()) {
             $user = $this->getUser();
-            if(empty($user)) {
-                $this->addError($attribute,'User with this email not found');
+            if (empty($user)) {
+                $this->addError($attribute, 'User with this email not found');
             }
         }
         return isset($user) ? $user : null;
     }
 
-    /**
-     * Logs in a user using the provided username and password.
-     *
-     * @return bool whether the user is logged in successfully
-     */
+
     public function login()
     {
         if ($this->validate()) {
             return $this->getUser();
         }
-        
+
         return false;
     }
 
@@ -82,7 +79,7 @@ class LoginForm extends Model
     protected function getUser()
     {
         if (!isset($this->_user)) {
-            $this->_user = User::find()->where(['email'=> $this->email])->one();
+            $this->_user = User::find()->where(['email' => $this->email])->one();
         }
 
         return $this->_user;

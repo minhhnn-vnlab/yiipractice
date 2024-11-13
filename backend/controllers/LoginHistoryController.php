@@ -1,4 +1,5 @@
 <?php
+
 namespace backend\controllers;
 
 use yii\data\ActiveDataProvider;
@@ -8,6 +9,7 @@ use yii\filters\ContentNegotiator;
 use common\models\LoginHistory;
 use backend\components\CustomDataProvider;
 use yii;
+
 class LoginHistoryController extends ActiveController
 {
     public $modelClass = 'common\models\LoginHistory';
@@ -40,12 +42,10 @@ class LoginHistoryController extends ActiveController
 
         $query = LoginHistory::find();
 
-        // Lọc theo user_id
         if (isset($requestParams['filter']['user_id'])) {
             $query->andWhere(['user_id' => $requestParams['filter']['user_id']]);
         }
 
-        // Sắp xếp theo login_time
         if (isset($requestParams['sort'])) {
             $sort = $requestParams['sort'];
             if ($sort[0] == '-') {
@@ -60,5 +60,4 @@ class LoginHistoryController extends ActiveController
             'query' => $query,
         ]);
     }
-
 }

@@ -4,8 +4,9 @@ namespace common\models;
 
 use Yii;
 use yii\base\Model;
-use backend\models\User;
+use common\models\User;
 use yii\validators\EmailValidator;
+
 /**
  * Signup form
  */
@@ -39,13 +40,13 @@ class SignupForm extends Model
         if (!$this->validate()) {
             return null;
         }
-        
+
         $user = $this->getUser();
 
         return $user->save();
     }
 
-        /**
+    /**
      * Validates the password.
      * This method serves as the inline validation for password.
      *
@@ -54,7 +55,7 @@ class SignupForm extends Model
      */
     public function validatePassword($attribute, $params)
     {
-        if($this->hasErrors()) {
+        if ($this->hasErrors()) {
             // Check if password is less than 8 characters
             if (strlen($this->$attribute) < 8) {
                 $this->addError($attribute, 'Password must be at least 8 characters long.');

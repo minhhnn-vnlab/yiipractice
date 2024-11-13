@@ -6,7 +6,7 @@ RUN apk update && apk add --no-cache \
     && docker-php-ext-install pdo pdo_pgsql
 
 # Cài đặt APCu
-RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS \
+RUN apk add --no-cache --virtual .phpize-deps autoconf dpkg-dev dpkg file g++ gcc libc-dev make pkgconf re2c \
     && pecl install apcu \
     && docker-php-ext-enable apcu \
     && apk del .phpize-deps

@@ -5,8 +5,9 @@ namespace frontend\services;
 use common\models\LoginForm;
 use common\models\SignupForm;
 use common\models\CodeVerifyForm;
-use backend\models\User;
+use common\models\User;
 use Yii;
+use yii\bootstrap5\Html;
 
 
 class AuthService
@@ -55,15 +56,23 @@ class AuthService
             ->setHeaders($this->getRequestHeaders())
             ->send();
         if ($response->statusCode == 200) {
-            if($response->data["two_fa_enabled"] === "true") {
+            if ($response->data["two_fa_enabled"] === "true") {
                 return $this->redirectToVerification($response, $model);
-            }else{
+            } else {
                 $user = new User();
                 $user->attributes = $response->data["data"]["user"];
                 Yii::$app->user->login($user, 3600 * 24 * 30); // Yii sẽ lưu thông tin người dùng vào phiên làm việc (session) và đánh dấu người dùng là đã đăng nhập.
                 return Yii::$app->controller->redirect("/site/login-history");
             }
         } else {
+            if ($response->data["message"] === "Account is locked") {
+                Yii::$app->session->setFlash("error", "Account is locked");
+                $locked = $response->data["data"]["user"]["locked"];
+                $id = $response->data["data"]["user"]["id"];
+                if ($locked == true) {
+                    Yii::$app->session->setFlash('warning', 'Tài khoản của bạn đã bị khóa, truy cập đường link sau để mở khóa: ' . Html::a('Mở khóa tài khoản', ['site/unlock', 'id' => $id]));
+                }
+            }
             Yii::$app->session->setFlash("error", $response->data["message"] ?? 'Login failed.');
         }
 
@@ -111,7 +120,10 @@ class AuthService
     {
         if (isset($response->data["message"])) {
             Yii::$app->session->setFlash("error", $response->data["message"]);
-        } 
+            if ($response->data["message"] === "Account is locked") {
+                Yii::$app->controller->redirect('/site/login');
+            }
+        }
     }
     private function getRequestHeaders()
     {

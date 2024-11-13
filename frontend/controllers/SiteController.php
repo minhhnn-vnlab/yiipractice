@@ -2,6 +2,7 @@
 
 namespace frontend\controllers;
 
+
 use Yii;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
@@ -9,8 +10,13 @@ use yii\filters\AccessControl;
 use common\models\LoginForm;
 use common\models\SignupForm;
 use common\models\CodeVerifyForm;
+use common\models\Setup2FAForm;
 use frontend\services\AuthService;
 use frontend\services\Setup2faService;
+use frontend\services\LogUserService;
+use common\models\User;
+use frontend\models\ResetPasswordForm;
+
 /**
  * Site controller
  */
@@ -18,10 +24,12 @@ class SiteController extends Controller
 {
     protected $authService;
     protected $setup2faService;
-    public function __construct($id, $module, AuthService $authService, Setup2faService $setup2faService, $config = [])
+    protected $logUserService;
+    public function __construct($id, $module, AuthService $authService, Setup2faService $setup2faService, LogUserService $logUserService, $config = [])
     {
         $this->authService = $authService;
         $this->setup2faService = $setup2faService;
+        $this->logUserService = $logUserService;
         parent::__construct($id, $module, $config);
     }
     /**
@@ -90,7 +98,9 @@ class SiteController extends Controller
     {
         $model = $this->authService->handleLogin();
         if ($model instanceof LoginForm) {
-            return $this->render('login', ['model' => $model]);
+            return $this->render('login', [
+                'model' => $model,
+            ]);
         }
         return $model;
     }
@@ -112,7 +122,7 @@ class SiteController extends Controller
             'method' => $twoFamethod
         ]);
     }
-    
+
     public function actionVerifyLogin()
     {
         $model = new CodeVerifyForm();
@@ -129,6 +139,18 @@ class SiteController extends Controller
         return $this->render('loginVerification', [
             'method' => $method,
             'email' => $email,
+            'model' => $model,
+        ]);
+    }
+    public function actionUnlock()
+    {
+        $model = new CodeVerifyForm();
+        $id = Yii::$app->request->get('id');
+        $result = $this->logUserService->verifyCodeUnlock($model, $id);
+        if (isset($result['redirect'])) {
+            return $this->redirect($result['redirect']);
+        }
+        return $this->render('unlock', [
             'model' => $model,
         ]);
     }
@@ -161,6 +183,4 @@ class SiteController extends Controller
         }
         return $model;
     }
-
-    
 }

@@ -1,4 +1,5 @@
 <?php
+
 use frontend\services\LoginHistoryService;
 use frontend\repositories\LoginHistoryRepository;
 
@@ -23,9 +24,14 @@ return [
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-frontend',
+            'enableCookieValidation' => true,
+
+            'enableCsrfValidation' => true,
+
+            'cookieValidationKey' => 'f204248f8e15b108c8e15a0b86e936270471f2ab600ded3486ed7ccd9d309a9b',
         ],
         'user' => [
-            'identityClass' => 'backend\models\User',
+            'identityClass' => 'common\models\User',
             'enableAutoLogin' => true,
             'identityCookie' => ['name' => '_identity-frontend', 'httpOnly' => true],
         ],
@@ -48,8 +54,7 @@ return [
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
-            'rules' => [
-            ],
+            'rules' => [],
         ],
         'httpClient' => [
             'class' => yii\httpclient\Client::class,

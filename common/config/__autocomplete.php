@@ -11,7 +11,8 @@
  * }
  * ```
  */
-class Yii {
+class Yii
+{
     /**
      * @var \yii\web\Application|\yii\console\Application|__Application
      */
@@ -24,11 +25,9 @@ class Yii {
  * @property RobThree\Auth\TwoFactorAuth $tfa
  * 
  */
-class __Application {
-}
+class __Application {}
 
 /**
- * @property backend\models\User $identity
+ * @property common\models\User $identity
  */
-class __WebUser {
-}
+class __WebUser {}
