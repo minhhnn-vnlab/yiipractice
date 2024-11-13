@@ -4,11 +4,14 @@ namespace frontend\models;
 
 use Yii;
 use yii\base\Model;
+use common\models\User;
 
 class ResetPasswordForm extends Model
 {
     public $newPassword;
     public $confirmPassword;
+
+    public $user_id;
 
     public function rules()
     {
@@ -34,11 +37,12 @@ class ResetPasswordForm extends Model
             }
         }
     }
+
     public function attributeLabels()
     {
         return [
-            'newPassword' => 'Mật khẩu mới',
-            'confirmPassword' => 'Nhập lại mật khẩu',
+            'newPassword' => 'NewPassword',
+            'confirmPassword' => 'ConfirmPassword',
         ];
     }
 }

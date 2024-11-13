@@ -8,12 +8,7 @@ use yii\bootstrap5\Html;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Alert;
 
-if (Yii::$app->session->hasFlash('warning')) {
-    echo Alert::widget([
-        'options' => ['class' => 'alert-warning'],
-        'body' => Yii::$app->session->getFlash('warning'),
-    ]);
-}
+
 $this->title = 'Login';
 $this->params['breadcrumbs'][] = $this->title;
 ?>

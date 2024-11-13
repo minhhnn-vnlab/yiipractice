@@ -137,16 +137,21 @@ class UserController extends ActiveController
     }
     public function actionVerifyCodeUnlock()
     {
-        $model = new CodeVerifyForm();
-        $model->attributes = Yii::$app->request->post();
-        if ($model->validate()) {
-            $login_verification = Twofaverification::find()->where(['user_id' => $model->user_id])->one() ?? new Twofaverification();
-            if ($login_verification->code === $model->code) {
-                Yii::$app->response->format = Response::FORMAT_JSON;
-                return [
-                    'status' => 200,
-                    'message' => 'Success verify code'
-                ];
+        $userId = Yii::$app->request->post()["user_id"];
+        $code = Yii::$app->request->post()["code"];
+
+        if ($userId && $code) {
+            $login_verification = Twofaverification::find()->where(['user_id' => $userId])->one() ?? new Twofaverification();
+            if ($login_verification->code === $code) {
+                $user = User::findOne($userId);
+                $user->locked = false;
+                if($user->save()){
+                    Yii::$app->response->format = Response::FORMAT_JSON;
+                    return [
+                        'status' => 200,
+                        'message' => 'Success verify code'
+                    ];
+                }
             }
         }
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -157,8 +162,9 @@ class UserController extends ActiveController
     }
     public function actionUpdateCodeUnlock()
     {
-        $user = Yii::$app->request->post('user');
-        if ($user) {
+        $id = Yii::$app->request->getBodyParam('id');
+        if ($id) {
+            $user = User::findOne($id);
             $login_verification = Twofaverification::find()->where(['user_id' => $user['id']])->one() ?? new Twofaverification();
             if ($this->userService->sendCodeEmail($login_verification, $user)) {
                 Yii::$app->response->format = Response::FORMAT_JSON;
@@ -172,6 +178,27 @@ class UserController extends ActiveController
         return [
             'status' => 400,
             'message' => 'Fail update code'
+        ];
+    }
+    public function actionUpdateNewPassword(){
+        Yii::debug("POST data: " . json_encode(Yii::$app->request->post()));
+        $confirmPassword = Yii::$app->request->post()["confirmPassword"];
+        $newPassword = Yii::$app->request->post()["newPassword"];
+        $userId = Yii::$app->request->post()["user_id"];
+        if ($newPassword && $confirmPassword && $newPassword == $confirmPassword) {
+            $user = $this->userService->setNewPassword($userId, $confirmPassword);
+            if ($user) {
+                Yii::$app->response->format = Response::FORMAT_JSON;
+                return [
+                    'status' => 200,
+                    'message' => 'Success update newpassword'
+                ];
+            }
+        }
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return [
+            'status' => 400,
+            'message' => 'Fail update newpassword'
         ];
     }
     protected function handleResponse($statusCode, $message, $errors = null)

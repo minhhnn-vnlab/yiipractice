@@ -14,19 +14,7 @@ return [
             'defaultTimeZone' => 'Asia/Ho_Chi_Minh', 
             'timeZone' => 'Asia/Ho_Chi_Minh', 
         ],
-        'mailer' => [
-            'class' => \yii\symfonymailer\Mailer::class,
-            'viewPath' => '@common/mail',
-            'useFileTransport' => false,
-            'transport' => [
-                'scheme' => 'smtp',
-                'host' => 'sandbox.smtp.mailtrap.io',
-                'username' => '69817fe10ca747',
-                'password' => 'c35e59cd688d06',
-                'port' => 2525,
-                'encryption' => 'tls',
-            ],
-        ],
+        
     ],
     'modules' => [
         'debug' => [

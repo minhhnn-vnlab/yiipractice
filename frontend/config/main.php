@@ -24,11 +24,6 @@ return [
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-frontend',
-            'enableCookieValidation' => true,
-
-            'enableCsrfValidation' => true,
-
-            'cookieValidationKey' => 'f204248f8e15b108c8e15a0b86e936270471f2ab600ded3486ed7ccd9d309a9b',
         ],
         'user' => [
             'identityClass' => 'common\models\User',

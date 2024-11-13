@@ -37,7 +37,8 @@ return [
             'targets' => [
                 [
                     'class' => \yii\log\FileTarget::class,
-                    'levels' => ['error', 'warning'],
+                    'levels' => ['error', 'warning', 'info', 'trace', 'profile'],
+                    'logFile' => '@runtime/logs/app.log',
                 ],
             ],
         ],
@@ -61,8 +62,9 @@ return [
                 'POST api/user/confirm-2fa' => 'user/update-two-fa',
                 'GET api/user/sendCodeEmail' => 'user/send-code-email',
                 'GET api/user/get2FAMethod' => 'user/get-twofa-method',
-                'POST api/user/verifyCodeUnlock' => 'user/verify-code-unlock',
-                'POST api/user/updateCodeUnlock' => 'user/update-code-unlock',
+                'POST api/user/verify-code-unlock' => 'user/verify-code-unlock',
+                'POST api/user/update-code-unlock' => 'user/update-code-unlock',
+                'POST api/user/update-new-password' => 'user/update-new-password',
             ],
         ],
         "tfa" => new TwoFactorAuth(new EndroidQrCodeProvider()),

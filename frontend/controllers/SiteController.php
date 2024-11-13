@@ -146,12 +146,29 @@ class SiteController extends Controller
     {
         $model = new CodeVerifyForm();
         $id = Yii::$app->request->get('id');
-        $result = $this->logUserService->verifyCodeUnlock($model, $id);
-        if (isset($result['redirect'])) {
-            return $this->redirect($result['redirect']);
+        $model->user_id = $id;
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            $result = $this->logUserService->verifyCodeUnlock($model, $id);
+            if (isset($result['redirect'])) {
+                return $this->redirect($result['redirect']);
+            }
         }
         return $this->render('unlock', [
             'model' => $model,
+        ]);
+    }
+    public function actionVerifyNewPassword(){
+        $model = new ResetPasswordForm();
+        $id = Yii::$app->request->get('id');
+        $model->user_id = $id;
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            $result = $this->authService->updateNewPassword($model, $id);
+            if (isset($result['redirect'])) {
+                return $this->redirect($result['redirect']);
+            }
+        }
+        return $this->render('verifyNewPassword', [
+            'model'=> $model,
         ]);
     }
     /**

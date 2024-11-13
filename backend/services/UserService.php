@@ -108,7 +108,6 @@ class UserService
             'issued_at' => DateConvert::convertToSQL($time),
             'expired_at' => DateConvert::convertToSQL($exp),
             'code' => "vnlab123",
-            'num_try' => 0,
         ]);
 
         if (!$login_verification->save()) {
@@ -123,5 +122,13 @@ class UserService
         //     ->send();
 
         return true;
+    }
+    public function setNewPassword($id, $password){
+        $user = User::findOne($id);
+        $user->password_hash = Yii::$app->security->generatePasswordHash($password);
+        if( $user->save() ){
+            return true;
+        }
+        return false;
     }
 }

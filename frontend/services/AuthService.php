@@ -6,6 +6,7 @@ use common\models\LoginForm;
 use common\models\SignupForm;
 use common\models\CodeVerifyForm;
 use common\models\User;
+use frontend\models\ResetPasswordForm;
 use Yii;
 use yii\bootstrap5\Html;
 
@@ -48,6 +49,21 @@ class AuthService
 
         return $model;
     }
+    public function updateNewPassword(ResetPasswordForm $model, $id){
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            $client = Yii::$app->httpClient;
+            $response = $client->post("user/update-new-password", $model->toArray())->send();
+            Yii::debug($response);
+            if ($response->data['status'] == 200) {
+                return ['redirect' => '/site/login'];
+            } else {
+                Yii::$app->session->setFlash("error", "Incorrect code entered");
+                return ['redirect' => '/site/verify-new-password?id=' . $id];
+            }
+        }
+    
+        return false;
+    }
     private function processLogin(LoginForm $model)
     {
         $httpClient = Yii::$app->httpClient;
@@ -72,8 +88,9 @@ class AuthService
                 if ($locked == true) {
                     Yii::$app->session->setFlash('warning', 'Tài khoản của bạn đã bị khóa, truy cập đường link sau để mở khóa: ' . Html::a('Mở khóa tài khoản', ['site/unlock', 'id' => $id]));
                 }
+            }else{
+                Yii::$app->session->setFlash("error", $response->data["message"] ?? 'Login failed.');
             }
-            Yii::$app->session->setFlash("error", $response->data["message"] ?? 'Login failed.');
         }
 
         return $model;
@@ -128,7 +145,7 @@ class AuthService
     private function getRequestHeaders()
     {
         return [
-            "X-Forwarded-For" => Yii::$app->request->userIP,
+            "X-Forwarded-For" => Yii::$app->request->remoteIP,
             "User-Agent" => Yii::$app->request->userAgent,
         ];
     }
